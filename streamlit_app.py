@@ -19,7 +19,7 @@ st.markdown("Scan your fridge or plan a meal. I'll handle the rest!")
 # 3. AI Setup Logic
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
     tab1, tab2 = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal"])
 
