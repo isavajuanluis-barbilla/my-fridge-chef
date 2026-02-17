@@ -5,19 +5,26 @@ import urllib.parse
 from ical.calendar import Calendar
 from ical.event import Event
 from datetime import datetime, timedelta
+import os
 
 # --- 1. Page Configuration ---
-st.set_page_config(page_title="Smart Sous-Chef", page_icon="🍳", layout="centered")
+st.set_page_config(page_title="Chef Aid", page_icon="🍳", layout="centered")
 
-# --- 2. Sidebar Settings ---
+# --- 2. Sidebar Settings & Logo ---
 with st.sidebar:
+    # Check if logo exists, then display it
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        st.title("🍳 Chef Aid")
+    
+    st.markdown("---")
     st.title("⚙️ Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
-    st.markdown("---")
-    st.info("MVP v1.8 | Syntax Fixed")
+    st.info("MVP v1.9 | Branded Edition")
 
-st.title("🍳 Smart Sous-Chef")
+st.title("👨‍🍳 Smart Sous-Chef")
 
 # --- 3. App Logic ---
 if api_key:
@@ -107,12 +114,10 @@ if api_key:
                     except Exception as cal_e:
                         st.error(f"Calendar error: {cal_e}")
 
-        # --- UNIVERSAL SMS TOOL (Syntax Fixed Here) ---
+        # --- UNIVERSAL SMS TOOL ---
         if 'last_res' in st.session_state and "SHOPPING LIST" in st.session_state['last_res']:
             st.divider()
-            # Extract everything after the shopping list header
             shop_list = st.session_state['last_res'].split("SHOPPING LIST")[-1].strip()
-            # Remove markdown formatting for the text message
             clean_list = shop_list.replace("*", "").replace("#", "")
             encoded = urllib.parse.quote(f"Shopping List:\n{clean_list}")
             st.markdown(f'### [📲 Send List via SMS](sms:?&body={encoded})')
