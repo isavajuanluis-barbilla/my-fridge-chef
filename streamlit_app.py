@@ -8,28 +8,37 @@ from datetime import datetime, timedelta
 import os
 
 # --- 1. Page Configuration ---
-st.set_page_config(page_title="Chef Aid", page_icon="🍳", layout="centered")
+st.set_page_config(page_title="Chef Aid", page_icon="👨‍🍳", layout="centered")
 
-# --- 2. Sidebar Settings & Logo ---
+# --- 2. Sidebar Settings ---
 with st.sidebar:
-    # Check if logo exists, then display it
-    if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
-    else:
-        st.title("🍳 Chef Aid")
-    
-    st.markdown("---")
     st.title("⚙️ Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
-    st.info("MVP v1.9 | Branded Edition")
+    st.markdown("---")
+    st.info("Chef Aid v1.9 | Branded Edition")
 
-st.title("👨‍🍳 Smart Sous-Chef")
+# --- 3. Main Page Header (Logo + Title) ---
+col1, col2 = st.columns([1, 4])
 
-# --- 3. App Logic ---
+with col1:
+    # Handles both logo.png and the accidental logo.png.png
+    logo_file = "logo.png" if os.path.exists("logo.png") else "logo.png.png"
+    if os.path.exists(logo_file):
+        st.image(logo_file, use_container_width=True)
+
+with col2:
+    st.markdown("<br>", unsafe_allow_code=True)
+    st.title("Chef Aid")
+    st.subheader("Smart Sous-Chef")
+
+st.markdown("---")
+
+# --- 4. App Logic ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
+        # Using Gemini 2.5 Flash as confirmed by your key list
         model = genai.GenerativeModel('gemini-2.5-flash')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
@@ -73,7 +82,7 @@ if api_key:
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
-        # --- TAB 4: CALENDAR PLANNER ---
+        # --- TAB 4: CALENDAR PLANNER (WITH SHOPPING LINKS) ---
         with tab4:
             st.subheader("Plan Your Future Meals")
             selected_meals = st.multiselect("Which meals?", ["Breakfast", "Lunch", "Dinner"], default=["Lunch", "Dinner"])
@@ -85,7 +94,7 @@ if api_key:
             if st.button("Generate Full Plan") and selected_meals:
                 with st.spinner(f"Architecting {timeframe} plan..."):
                     meals_str = ", ".join(selected_meals)
-                    prompt = f"""Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. 
+                    prompt = f"""Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. 
                               ONLY plan: {meals_str}. 
                               FOR EACH DAY: 
                               1. List the meals.
