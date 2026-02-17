@@ -15,7 +15,7 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("MVP v1.4 | Universal Model Fix")
+    st.info("MVP v1.5 | Stable Model Fix")
 
 st.title("🍳 Smart Sous-Chef")
 
@@ -24,9 +24,9 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # --- MODEL SELECTION LOGIC ---
-        # We use 'gemini-1.5-flash-latest' as it is the most compatible name in 2026
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # --- MODEL SELECTION ---
+        # Switching to the most universal stable name
+        model = genai.GenerativeModel('gemini-pro')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
         tab1, tab2, tab3, tab4 = tabs
@@ -40,8 +40,9 @@ if api_key:
             if img_file and st.button("Analyze & Suggest"):
                 img = Image.open(img_file)
                 with st.spinner("Scanning..."):
-                    # Using the model to analyze the image
-                    response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people.", img])
+                    # NOTE: 'gemini-pro' usually requires 'gemini-pro-vision' for images
+                    vision_model = genai.GenerativeModel('gemini-pro-vision')
+                    response = vision_model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people.", img])
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
@@ -114,7 +115,11 @@ if api_key:
             st.markdown(f'### [📲 Send List via SMS](sms:?&body={encoded})')
 
     except Exception as e:
-        st.error(f"Something went wrong: {e}")
-        st.info("Possible fix: Double-check that your API Key is valid and that you have 'Gemini API' enabled in Google AI Studio.")
+        # If gemini-pro is also missing, this will print exactly what you CAN use
+        st.error(f"Model Error: {e}")
+        if "404" in str(e):
+            st.write("Current available models for your key:")
+            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            st.write(models)
 else:
     st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
