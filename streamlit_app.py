@@ -15,7 +15,7 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("MVP v1.6 | Gemini 2.5 Flash Edition")
+    st.info("MVP v1.7 | The 'Perfect' Version")
 
 st.title("🍳 Smart Sous-Chef")
 
@@ -23,8 +23,7 @@ st.title("🍳 Smart Sous-Chef")
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        
-        # Using the specific model confirmed available in your key's list
+        # Using the specific 2.5 Flash model confirmed for your key
         model = genai.GenerativeModel('gemini-2.5-flash')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
@@ -33,43 +32,42 @@ if api_key:
         # --- TAB 1: FRIDGE SCAN ---
         with tab1:
             st.subheader("What's in the kitchen?")
-            source = st.radio("Upload or Take Photo:", ["Upload Image", "Use Camera"])
+            source = st.radio("Source:", ["Upload Image", "Use Camera"])
             img_file = st.file_uploader("Photo", type=['jpg','png']) if source == "Upload Image" else st.camera_input("Scan")
 
             if img_file and st.button("Analyze & Suggest"):
                 img = Image.open(img_file)
-                with st.spinner("Analyzing with Gemini 2.5..."):
-                    # Gemini 2.5 is multimodal: it handles text and images together perfectly
-                    response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people. End with 'SHOPPING LIST'.", img])
+                with st.spinner("Analyzing ingredients..."):
+                    response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people. For each, list ingredients and quantities.", img])
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
         # --- TAB 2: MEAL PLANNER ---
         with tab2:
             st.subheader("Specific Recipe Search")
-            meal_request = st.text_input("What do you want to eat?")
-            if meal_request and st.button("Get Recipe"):
-                with st.spinner("Planning..."):
-                    response = model.generate_content(f"Recipe for {meal_request} for {num_people} people. End with 'SHOPPING LIST' in bullets.")
+            meal_req = st.text_input("What are you craving?")
+            if meal_req and st.button("Get Recipe"):
+                with st.spinner("Generating..."):
+                    response = model.generate_content(f"Full recipe for {meal_req} scaled for {num_people} people. Include specific quantities and a SHOPPING LIST.")
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
         # --- TAB 3: CHEF'S CHOICE ---
         with tab3:
-            st.subheader("I'll decide for you!")
+            st.subheader("Let the AI Decide")
             c1, c2, c3 = st.columns(3)
             with c1: m_type = st.selectbox("Meal", ["Breakfast", "Lunch", "Dinner"])
             with c2: cuisine = st.selectbox("Style", ["Italian", "Japanese", "Mexican", "Mediterranean"])
             with c3: health = st.select_slider("Vibe", options=["Greasy", "Balanced", "Healthy"])
 
             if st.button("Surprise Me!"):
-                with st.spinner("Consulting AI Chef..."):
-                    prompt = f"Suggest a {health} {cuisine} {m_type} for {num_people}. Include a 'SHOPPING LIST' at the end."
+                with st.spinner("Thinking..."):
+                    prompt = f"Suggest a {health} {cuisine} {m_type} for {num_people}. Include ingredients and quantities and a SHOPPING LIST."
                     response = model.generate_content(prompt)
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
-# --- TAB 4: CALENDAR PLANNER ---
+        # --- TAB 4: CALENDAR PLANNER (WITH SHOPPING LINKS) ---
         with tab4:
             st.subheader("Plan Your Future Meals")
             selected_meals = st.multiselect("Which meals?", ["Breakfast", "Lunch", "Dinner"], default=["Lunch", "Dinner"])
@@ -79,13 +77,15 @@ if api_key:
             with col_p2: diet_goal = st.selectbox("Focus", ["Quick & Easy", "High Protein", "Budget Friendly", "Vegetarian"])
 
             if st.button("Generate Full Plan") and selected_meals:
-                with st.spinner("Architecting plan..."):
+                with st.spinner(f"Architecting {timeframe} plan..."):
                     meals_str = ", ".join(selected_meals)
-                    # Updated prompt to ask for specific ingredient links
-                    prompt = f"""Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. 
+                    # Prompt designed to force the links you wanted
+                    prompt = f"""Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. 
                               ONLY plan: {meals_str}. 
-                              For EVERY day, list the meals, then provide a '🛒 Shopping Link' which is a Google Search URL 
-                              for the specific ingredients and quantities needed for that day.
+                              FOR EACH DAY: 
+                              1. List the meals.
+                              2. Under the meals, list the exact INGREDIENTS and QUANTITIES needed.
+                              3. Provide a '🛒 Quick Google Shop' link that searches for those ingredients.
                               Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."""
                     
                     response = model.generate_content(prompt)
@@ -97,11 +97,9 @@ if api_key:
                         calendar = Calendar()
                         days_split = plan_text.split("**Day")
                         for i, content in enumerate(days_split[1:], 1):
-                            # Clean up the description for the calendar
-                            event_desc = content.strip().split("MASTER SHOPPING LIST")[0]
                             event = Event(
                                 summary=f"🍴 {meals_str} (Day {i})",
-                                description=event_desc[:500],
+                                description=content.strip()[:500], # Puts ingredients/quantities in calendar notes
                                 start=(datetime.now() + timedelta(days=i)).date(),
                             )
                             calendar.events.append(event)
@@ -110,3 +108,6 @@ if api_key:
                         st.download_button("📅 Download .ics Calendar File", data=ics_data, file_name="my_meal_plan.ics", mime="text/calendar")
                     except Exception as cal_e:
                         st.error(f"Calendar error: {cal_e}")
+
+        # --- UNIVERSAL SMS TOOL ---
+        if 'last_res' in st.session_state and "SHOPPING LIST" in
