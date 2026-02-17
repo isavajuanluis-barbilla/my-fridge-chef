@@ -69,7 +69,7 @@ if api_key:
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
-        # --- TAB 4: CALENDAR PLANNER ---
+# --- TAB 4: CALENDAR PLANNER ---
         with tab4:
             st.subheader("Plan Your Future Meals")
             selected_meals = st.multiselect("Which meals?", ["Breakfast", "Lunch", "Dinner"], default=["Lunch", "Dinner"])
@@ -79,9 +79,14 @@ if api_key:
             with col_p2: diet_goal = st.selectbox("Focus", ["Quick & Easy", "High Protein", "Budget Friendly", "Vegetarian"])
 
             if st.button("Generate Full Plan") and selected_meals:
-                with st.spinner("Architecting {timeframe} plan..."):
+                with st.spinner("Architecting plan..."):
                     meals_str = ", ".join(selected_meals)
-                    prompt = f"Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. ONLY plan: {meals_str}. Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."
+                    # Updated prompt to ask for specific ingredient links
+                    prompt = f"""Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. 
+                              ONLY plan: {meals_str}. 
+                              For EVERY day, list the meals, then provide a '🛒 Shopping Link' which is a Google Search URL 
+                              for the specific ingredients and quantities needed for that day.
+                              Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."""
                     
                     response = model.generate_content(prompt)
                     plan_text = response.text
@@ -92,9 +97,11 @@ if api_key:
                         calendar = Calendar()
                         days_split = plan_text.split("**Day")
                         for i, content in enumerate(days_split[1:], 1):
+                            # Clean up the description for the calendar
+                            event_desc = content.strip().split("MASTER SHOPPING LIST")[0]
                             event = Event(
                                 summary=f"🍴 {meals_str} (Day {i})",
-                                description=content.strip()[:300],
+                                description=event_desc[:500],
                                 start=(datetime.now() + timedelta(days=i)).date(),
                             )
                             calendar.events.append(event)
@@ -103,16 +110,3 @@ if api_key:
                         st.download_button("📅 Download .ics Calendar File", data=ics_data, file_name="my_meal_plan.ics", mime="text/calendar")
                     except Exception as cal_e:
                         st.error(f"Calendar error: {cal_e}")
-
-        # --- UNIVERSAL SMS TOOL ---
-        if 'last_res' in st.session_state and "SHOPPING LIST" in st.session_state['last_res']:
-            st.divider()
-            shop_list = st.session_state['last_res'].split("SHOPPING LIST")[-1].strip()
-            clean_list = shop_list.replace("*", "").replace("#", "")
-            encoded = urllib.parse.quote(f"Shopping List:\n{clean_list}")
-            st.markdown(f'### [📲 Send List via SMS](sms:?&body={encoded})')
-
-    except Exception as e:
-        st.error(f"API Error: {e}")
-else:
-    st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
