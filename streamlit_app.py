@@ -15,7 +15,7 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("MVP v1.7 | The 'Perfect' Version")
+    st.info("MVP v1.8 | Syntax Fixed")
 
 st.title("🍳 Smart Sous-Chef")
 
@@ -23,7 +23,6 @@ st.title("🍳 Smart Sous-Chef")
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        # Using the specific 2.5 Flash model confirmed for your key
         model = genai.GenerativeModel('gemini-2.5-flash')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
@@ -67,7 +66,7 @@ if api_key:
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
-        # --- TAB 4: CALENDAR PLANNER (WITH SHOPPING LINKS) ---
+        # --- TAB 4: CALENDAR PLANNER ---
         with tab4:
             st.subheader("Plan Your Future Meals")
             selected_meals = st.multiselect("Which meals?", ["Breakfast", "Lunch", "Dinner"], default=["Lunch", "Dinner"])
@@ -79,13 +78,12 @@ if api_key:
             if st.button("Generate Full Plan") and selected_meals:
                 with st.spinner(f"Architecting {timeframe} plan..."):
                     meals_str = ", ".join(selected_meals)
-                    # Prompt designed to force the links you wanted
-                    prompt = f"""Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. 
+                    prompt = f"""Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. 
                               ONLY plan: {meals_str}. 
                               FOR EACH DAY: 
                               1. List the meals.
-                              2. Under the meals, list the exact INGREDIENTS and QUANTITIES needed.
-                              3. Provide a '🛒 Quick Google Shop' link that searches for those ingredients.
+                              2. Under the meals, list the exact INGREDIENTS and QUANTITIES.
+                              3. Provide a '🛒 Quick Google Shop' link (Google search URL) for those ingredients.
                               Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."""
                     
                     response = model.generate_content(prompt)
@@ -99,7 +97,7 @@ if api_key:
                         for i, content in enumerate(days_split[1:], 1):
                             event = Event(
                                 summary=f"🍴 {meals_str} (Day {i})",
-                                description=content.strip()[:500], # Puts ingredients/quantities in calendar notes
+                                description=content.strip()[:500],
                                 start=(datetime.now() + timedelta(days=i)).date(),
                             )
                             calendar.events.append(event)
@@ -109,5 +107,17 @@ if api_key:
                     except Exception as cal_e:
                         st.error(f"Calendar error: {cal_e}")
 
-        # --- UNIVERSAL SMS TOOL ---
-        if 'last_res' in st.session_state and "SHOPPING LIST" in
+        # --- UNIVERSAL SMS TOOL (Syntax Fixed Here) ---
+        if 'last_res' in st.session_state and "SHOPPING LIST" in st.session_state['last_res']:
+            st.divider()
+            # Extract everything after the shopping list header
+            shop_list = st.session_state['last_res'].split("SHOPPING LIST")[-1].strip()
+            # Remove markdown formatting for the text message
+            clean_list = shop_list.replace("*", "").replace("#", "")
+            encoded = urllib.parse.quote(f"Shopping List:\n{clean_list}")
+            st.markdown(f'### [📲 Send List via SMS](sms:?&body={encoded})')
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+else:
+    st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
