@@ -15,7 +15,7 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("MVP v1.3 | Model Name Fix")
+    st.info("MVP v1.4 | Universal Model Fix")
 
 st.title("🍳 Smart Sous-Chef")
 
@@ -23,8 +23,10 @@ st.title("🍳 Smart Sous-Chef")
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        # UPDATED MODEL NAME: gemini-1.5-flash is the most stable version for 2026 apps
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # --- MODEL SELECTION LOGIC ---
+        # We use 'gemini-1.5-flash-latest' as it is the most compatible name in 2026
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
         tab1, tab2, tab3, tab4 = tabs
@@ -38,6 +40,7 @@ if api_key:
             if img_file and st.button("Analyze & Suggest"):
                 img = Image.open(img_file)
                 with st.spinner("Scanning..."):
+                    # Using the model to analyze the image
                     response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people.", img])
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
@@ -79,7 +82,7 @@ if api_key:
             if st.button("Generate Full Plan") and selected_meals:
                 with st.spinner("Architecting plan..."):
                     meals_str = ", ".join(selected_meals)
-                    prompt = f"Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. ONLY plan: {meals_str}. Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."
+                    prompt = f"Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. ONLY plan: {meals_str}. Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."
                     
                     response = model.generate_content(prompt)
                     plan_text = response.text
@@ -112,5 +115,6 @@ if api_key:
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
+        st.info("Possible fix: Double-check that your API Key is valid and that you have 'Gemini API' enabled in Google AI Studio.")
 else:
     st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
