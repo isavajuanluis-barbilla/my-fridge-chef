@@ -15,7 +15,7 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("MVP v1.5 | Stable Model Fix")
+    st.info("MVP v1.6 | Gemini 2.5 Flash Edition")
 
 st.title("🍳 Smart Sous-Chef")
 
@@ -24,9 +24,8 @@ if api_key:
     try:
         genai.configure(api_key=api_key)
         
-        # --- MODEL SELECTION ---
-        # Switching to the most universal stable name
-        model = genai.GenerativeModel('gemini-pro')
+        # Using the specific model confirmed available in your key's list
+        model = genai.GenerativeModel('gemini-2.5-flash')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
         tab1, tab2, tab3, tab4 = tabs
@@ -39,10 +38,9 @@ if api_key:
 
             if img_file and st.button("Analyze & Suggest"):
                 img = Image.open(img_file)
-                with st.spinner("Scanning..."):
-                    # NOTE: 'gemini-pro' usually requires 'gemini-pro-vision' for images
-                    vision_model = genai.GenerativeModel('gemini-pro-vision')
-                    response = vision_model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people.", img])
+                with st.spinner("Analyzing with Gemini 2.5..."):
+                    # Gemini 2.5 is multimodal: it handles text and images together perfectly
+                    response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people. End with 'SHOPPING LIST'.", img])
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
@@ -65,7 +63,7 @@ if api_key:
             with c3: health = st.select_slider("Vibe", options=["Greasy", "Balanced", "Healthy"])
 
             if st.button("Surprise Me!"):
-                with st.spinner("Choosing..."):
+                with st.spinner("Consulting AI Chef..."):
                     prompt = f"Suggest a {health} {cuisine} {m_type} for {num_people}. Include a 'SHOPPING LIST' at the end."
                     response = model.generate_content(prompt)
                     st.markdown(response.text)
@@ -81,7 +79,7 @@ if api_key:
             with col_p2: diet_goal = st.selectbox("Focus", ["Quick & Easy", "High Protein", "Budget Friendly", "Vegetarian"])
 
             if st.button("Generate Full Plan") and selected_meals:
-                with st.spinner("Architecting plan..."):
+                with st.spinner("Architecting {timeframe} plan..."):
                     meals_str = ", ".join(selected_meals)
                     prompt = f"Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. ONLY plan: {meals_str}. Use headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."
                     
@@ -115,11 +113,6 @@ if api_key:
             st.markdown(f'### [📲 Send List via SMS](sms:?&body={encoded})')
 
     except Exception as e:
-        # If gemini-pro is also missing, this will print exactly what you CAN use
-        st.error(f"Model Error: {e}")
-        if "404" in str(e):
-            st.write("Current available models for your key:")
-            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            st.write(models)
+        st.error(f"API Error: {e}")
 else:
     st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
