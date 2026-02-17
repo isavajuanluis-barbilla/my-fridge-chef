@@ -2,91 +2,92 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import urllib.parse
+from ics import Calendar, Event
+from datetime import datetime, timedelta
 
-# 1. Page Configuration
-st.set_page_config(page_title="Smart Sous-Chef", page_icon="🍳", layout="centered")
+st.set_page_config(page_title="Smart Sous-Chef", page_icon="🍳")
 
-# 2. Sidebar Settings
+# 1. Sidebar
 with st.sidebar:
     st.title("⚙️ Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
-    st.info("App v1.0 - All Tabs Inclusive")
 
 st.title("🍳 Smart Sous-Chef")
 
-# 3. App Logic
 if api_key:
-    try:
-        genai.configure(api_key=api_key)
-        # Using Gemini 3 Flash for 2026 speed and stability
-        model = genai.GenerativeModel('gemini-3-flash')
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-3-flash')
 
-        tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
-        tab1, tab2, tab3, tab4 = tabs
+    tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
+    tab1, tab2, tab3, tab4 = tabs
 
-        # --- TAB 1: ORIGINAL FRIDGE SCAN ---
-        with tab1:
-            st.subheader("What's in the kitchen?")
-            source = st.radio("Upload or Take Photo:", ["Upload Image", "Use Camera"])
-            if source == "Upload Image":
-                img_file = st.file_uploader("Choose a photo...", type=['jpg', 'jpeg', 'png'])
-            else:
-                img_file = st.camera_input("Take a photo")
+    # Tabs 1, 2, 3 logic remains standard...
+    with tab1:
+        source = st.radio("Source:", ["Upload Image", "Use Camera"])
+        img_file = st.file_uploader("Photo", type=['jpg', 'png']) if source == "Upload Image" else st.camera_input("Scan")
+        if img_file and st.button("Analyze"):
+            img = Image.open(img_file)
+            res = model.generate_content([f"Suggest recipes for {num_people} based on this.", img])
+            st.markdown(res.text)
 
-            if img_file and st.button("Analyze & Suggest"):
-                img = Image.open(img_file)
-                with st.spinner("Chef is looking..."):
-                    response = model.generate_content([f"Identify ingredients and suggest 3 recipes for {num_people} people.", img])
-                    st.markdown(response.text)
+    with tab2:
+        meal_req = st.text_input("Specific craving?")
+        if meal_req and st.button("Get Recipe"):
+            res = model.generate_content(f"Recipe for {meal_req} for {num_people}. Include SHOPPING LIST.")
+            st.markdown(res.text)
 
-        # --- TAB 2: MEAL PLANNER ---
-        with tab2:
-            st.subheader("Recipe Search")
-            meal_request = st.text_input("What do you want to eat?")
-            if meal_request and st.button("Get Recipe"):
-                with st.spinner("Planning..."):
-                    response = model.generate_content(f"Recipe for {meal_request} for {num_people} people. End with 'SHOPPING LIST' in bullets.")
-                    st.markdown(response.text)
+    with tab3:
+        c1, c2, c3 = st.columns(3)
+        with c1: m_type = st.selectbox("Meal", ["Breakfast", "Lunch", "Dinner"])
+        with c2: cuisine = st.selectbox("Style", ["Italian", "Japanese", "French", "Mexican", "Indian"])
+        with c3: health = st.select_slider("Vibe", options=["Greasy", "Balanced", "Healthy"])
+        if st.button("Surprise Me"):
+            res = model.generate_content(f"Suggest {health} {cuisine} {m_type} for {num_people}. Include SHOPPING LIST.")
+            st.markdown(res.text)
 
-        # --- TAB 3: CHEF'S CHOICE ---
-        with tab3:
-            st.subheader("I'll decide for you!")
-            c1, c2, c3 = st.columns(3)
-            with c1: m_type = st.selectbox("Meal", ["Breakfast", "Lunch", "Dinner"])
-            with c2: cuisine = st.selectbox("Style", ["Italian", "Japanese", "French", "Mexican", "Mediterranean", "American"])
-            with c3: health = st.select_slider("Vibe", options=["Greasy", "Balanced", "Healthy"])
+    # --- TAB 4: CALENDAR PLANNER (UPDATED) ---
+    with tab4:
+        st.subheader("Plan Your Future Meals")
+        
+        # New Multi-select for meal types
+        selected_meals = st.multiselect(
+            "Which meals should I plan?",
+            ["Breakfast", "Lunch", "Dinner"],
+            default=["Lunch", "Dinner"] # Sets your preference as the default
+        )
+        
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            timeframe = st.radio("Timeframe", ["Weekly (7 Days)", "Monthly (4 Weeks)"])
+        with col_p2:
+            diet_goal = st.selectbox("Focus", ["Quick & Easy", "High Protein", "Budget Friendly", "Vegetarian"])
 
-            if st.button("Surprise Me!"):
-                with st.spinner("Consulting cookbooks..."):
-                    prompt = f"Suggest a {health} {cuisine} {m_type} for {num_people}. Include a 'SHOPPING LIST' at the end."
-                    response = model.generate_content(prompt)
-                    st.markdown(response.text)
+        if st.button("Generate Full Plan") and selected_meals:
+            with st.spinner("Generating..."):
+                meals_str = ", ".join(selected_meals)
+                prompt = f"Create a {timeframe} meal plan for {num_people} people. Focus: {diet_goal}. \
+                          ONLY plan these meals: {meals_str}. \
+                          Format: Bold headers like **Day 1**, **Day 2**. End with 'MASTER SHOPPING LIST'."
+                
+                response = model.generate_content(prompt)
+                plan_text = response.text
+                st.markdown(plan_text)
 
-        # --- TAB 4: CALENDAR PLANNER ---
-        with tab4:
-            st.subheader("Plan Your Future Meals")
-            col_p1, col_p2 = st.columns(2)
-            with col_p1: timeframe = st.radio("Timeframe", ["Weekly (7 Days)", "Monthly (4 Weeks)"])
-            with col_p2: diet_goal = st.selectbox("Focus", ["Quick & Easy", "High Protein", "Budget Friendly", "Vegetarian"])
+                # Calendar (.ics) Export
+                try:
+                    c = Calendar()
+                    days = plan_text.split("**Day")
+                    for i, content in enumerate(days[1:], 1):
+                        e = Event()
+                        e.name = f"🍴 {meals_str} (Day {i})"
+                        e.description = content.strip()[:300]
+                        e.begin = (datetime.now() + timedelta(days=i)).strftime("%Y-%m-%d 12:00:00")
+                        c.events.add(e)
+                    
+                    st.download_button("📅 Download .ics Calendar File", data=str(c), file_name="meals.ics")
+                except:
+                    st.write("Plan ready! (Calendar file error - check formatting)")
 
-            if st.button("Generate Full Plan"):
-                with st.spinner("Architecting plan..."):
-                    prompt = f"Create a {timeframe} meal plan for {num_people} people focused on {diet_goal}. Use bold headers for each day like **Day 1**, **Day 2**. End with a 'MASTER SHOPPING LIST'."
-                    response = model.generate_content(prompt)
-                    st.write(response.text)
-
-        # --- UNIVERSAL SMS TOOL (Appears if a list is found) ---
-        # This checks the last generated response for a shopping list
-        if 'response' in locals() and "SHOPPING LIST" in response.text:
-            st.divider()
-            shop_list = response.text.split("SHOPPING LIST")[-1].strip()
-            clean_list = shop_list.replace("*", "").replace("#", "")
-            encoded = urllib.parse.quote(f"Shopping List:\n{clean_list}")
-            st.markdown(f'### [📲 Click to Text List](sms:?&body={encoded})')
-
-    except Exception as e:
-        st.error(f"Operational Error: {e}")
-        st.info("Tip: Double-check your API key and internet connection.")
 else:
-    st.warning("👈 Please enter your Gemini API Key in the sidebar to begin!")
+    st.info("👈 Enter API Key to start.")
