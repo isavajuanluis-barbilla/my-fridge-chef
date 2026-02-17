@@ -16,29 +16,33 @@ with st.sidebar:
     api_key = st.text_input("Enter Gemini API Key", type="password")
     num_people = st.slider("How many people?", 1, 10, 2)
     st.markdown("---")
-    st.info("Chef Aid v1.9 | Branded Edition")
+    st.info("Chef Aid v2.0 | Python 3.13 Fixed")
 
 # --- 3. Main Page Header (Logo + Title) ---
-col1, col2 = st.columns([1, 4])
-
-with col1:
-    # Handles both logo.png and the accidental logo.png.png
+# We use a container to keep things stable in Python 3.13
+header_container = st.container()
+with header_container:
+    col1, col2 = st.columns([1, 3])
+    
     logo_file = "logo.png" if os.path.exists("logo.png") else "logo.png.png"
-    if os.path.exists(logo_file):
-        st.image(logo_file, use_container_width=True)
+    
+    with col1:
+        if os.path.exists(logo_file):
+            st.image(logo_file, use_container_width=True)
+        else:
+            st.title("👨‍🍳")
+            
+    with col2:
+        # Avoided the <br> tag to prevent the TypeError
+        st.title("Chef Aid")
+        st.write("### Smart Sous-Chef")
 
-with col2:
-    st.markdown("<br>", unsafe_allow_code=True)
-    st.title("Chef Aid")
-    st.subheader("Smart Sous-Chef")
-
-st.markdown("---")
+st.divider()
 
 # --- 4. App Logic ---
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        # Using Gemini 2.5 Flash as confirmed by your key list
         model = genai.GenerativeModel('gemini-2.5-flash')
 
         tabs = st.tabs(["📸 Fridge Scan", "📝 Plan a Meal", "🎲 Chef's Choice", "🗓️ Calendar Planner"])
@@ -82,7 +86,7 @@ if api_key:
                     st.markdown(response.text)
                     st.session_state['last_res'] = response.text
 
-        # --- TAB 4: CALENDAR PLANNER (WITH SHOPPING LINKS) ---
+        # --- TAB 4: CALENDAR PLANNER ---
         with tab4:
             st.subheader("Plan Your Future Meals")
             selected_meals = st.multiselect("Which meals?", ["Breakfast", "Lunch", "Dinner"], default=["Lunch", "Dinner"])
