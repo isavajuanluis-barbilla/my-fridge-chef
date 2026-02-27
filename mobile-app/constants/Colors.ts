@@ -1,0 +1,25 @@
+export const Colors = {
+  primary: '#FF6B35',
+  primaryDark: '#E5501A',
+  primaryLight: '#FF8C5A',
+  secondary: '#2D3748',
+  background: '#FFF8F5',
+  surface: '#FFFFFF',
+  surfaceAlt: '#FFF0E8',
+  text: '#1A202C',
+  textSecondary: '#718096',
+  textLight: '#A0AEC0',
+  border: '#E2E8F0',
+  success: '#48BB78',
+  warning: '#ED8936',
+  error: '#FC8181',
+  white: '#FFFFFF',
+  black: '#000000',
+  overlay: 'rgba(0,0,0,0.5)',
+  shadow: 'rgba(255, 107, 53, 0.15)',
+  tabBar: '#FFFFFF',
+  tabBarBorder: '#FFE4D6',
+  gradient: ['#FF6B35', '#FF8C5A'],
+};
+
+export default Colors;
